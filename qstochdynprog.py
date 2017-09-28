@@ -1,4 +1,5 @@
 import numpy as np
+import heapq
 import networkx as nx
 from collections import namedtuple, defaultdict
 from operator import itemgetter
@@ -118,10 +119,50 @@ class QStochDynProg:
         """
         return [d['control'] for _,_,d in self.landscape.edges(data=True) if 'control' in d]
 
-    def get_costs_in_iteration(self):
+    def get_best_nodes_per_iteration(self, nnodes=1):
         """
-        :return: A list of list. The outer list is corresponds to the iteration.
-        The inner list contains values of the cost function obtained at the given iteration.
+        Find best nnodes per iteration
+        :param nnodes: an integer indicating how many nodes per iterations are to be extracted (default 1).
+        :return: The list of lists of best nodes
+        """
+        best_nodes_per_iteration = defaultdict(list)
+
+        # Group all nodes by iteration
+        for node, prop in self.landscape.node.items():
+            best_nodes_per_iteration[self.get_iteration(prop)].append(node)
+
+        # sort by iteration
+        best_nodes_per_iteration = sorted(best_nodes_per_iteration.items())
+
+        # extract nodes by ignoring iteration number
+        best_nodes_per_iteration = zip(*best_nodes_per_iteration)[1]
+
+        # Extracting sought best nnotes per iteration
+        best_nodes_per_iteration = [
+            heapq.nlargest(nnodes, nodes, key=lambda n: self.get_cost_function(self.landscape.node[n]))
+            for nodes in best_nodes_per_iteration
+        ]
+
+        return best_nodes_per_iteration
+
+    def get_best_path_per_iteration(self, npath=1):
+        """
+        Get values of the cost function along a best path per each iteration
+        :param npath: an integer indicating how many paths per iterations are to be extracted (default 1).
+        :return: A generator returning the list of cost functions along a path
+        """
+        # get the dict of best nodes
+        for best_nodes in self.get_best_nodes_per_iteration(npath):
+            for node in best_nodes:
+                # extract list of nodes using depth first search
+                # Note: depth first search must yield the same result as breath first search
+                nodes = list(nx.dfs_preorder_nodes(self.landscape, node))
+                nodes.reverse()
+                yield [self.get_cost_function(self.landscape.node[_]) for _ in nodes]
+
+    def get_costs_per_iteration(self):
+        """
+        :return: A list of tuples of the form [(iteration number, [list of values of obtained at this iteration],...]).
         """
         # Group cost functions by iterations
         cost_per_iteration = defaultdict(list)
@@ -134,39 +175,39 @@ class QStochDynProg:
 
         return cost_per_iteration
 
-    def get_optimal_policy(self):
+    def get_best_paths(self, npaths=-1):
         """
-        Find the optimal control policy to maximize the objective function
-        :return: max value of the cost function
-            and list of controls that take from the initial condition to the optimal solution
+        Extract npaths paths leading to the highest values of the cost function
+        :param npaths: an integer specifying number of paths to generate (default all path)
+        :return: generator returning the list of nodes.
         """
-        # Find the maximal node
-        max_cost, max_node = max(
-             (self.get_cost_function(prop), node) for node, prop in self.landscape.node.items()
+        # set the default number of paths if npaths is negative
+        npaths = (len(self.landscape) if npaths < 0 else npaths)
+
+        # Get npaths nodes with the largest cost function, which represent the end of policies
+        best_nodes = heapq.nlargest(
+            npaths,
+            ((self.get_cost_function(prop), node) for node, prop in self.landscape.node.items())
         )
 
-        # Initialize variables
-        opt_policy_controls = []
-        current_node = self.landscape[max_node]
+        # Extract the nodes
+        best_nodes = zip(*best_nodes)[1]
 
-        # Walk from best node backwards to the initial condition
-        while current_node:
+        for end_node in best_nodes:
+            # extract list of nodes using depth first search
+            # Note: depth first search must yield the same result as breath first search
+            nodes = list(nx.dfs_preorder_nodes(self.landscape, end_node))
+            nodes.reverse()
+            yield nodes
 
-            assert len(current_node) == 1, "Algorithm implemented incorrectly"
-
-            # Assertion above guarantees that there will be only one element
-            next_node, prop = current_node.items()[0]
-
-            # Add extracted value of the control
-            opt_policy_controls.append(prop['control'])
-
-            # Extract next node
-            current_node = self.landscape[next_node]
-
-        # reverse the order in the list
-        opt_policy_controls.reverse()
-
-        return max_cost, opt_policy_controls
+    def get_best_paths_cost_func(self, npaths=-1):
+        """
+        Get values of the cost function along a best path
+        :param npaths: an integer specifying number of paths to generate (default all path)
+        :return: A generator of lists of cost functions along a path
+        """
+        for nodes in self.get_best_paths(npaths):
+            yield [self.get_cost_function(self.landscape.node[_]) for _ in nodes]
 
     def get_landscape_connectedness(self, **kwargs):
         """
@@ -211,7 +252,7 @@ if __name__=='__main__':
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
 
-    #np.random.seed(1839127)
+    np.random.seed(94844)
 
     from itertools import product
     from scipy.linalg import expm
@@ -310,7 +351,7 @@ if __name__=='__main__':
         CCostFunc()
     )
 
-    for _ in range(12):
+    for _ in range(8):
        opt.next_time_step()
 
     ###############################################################################################
@@ -336,28 +377,58 @@ if __name__=='__main__':
     # plt.axis('on')
     # plt.show()
 
-    # Plot histogram per iteration
-    ax = plt.figure().add_subplot(111, projection='3d')
+    ###############################################################################################
 
-    ax.set_title("Histograms of values of cost functions per iteration")
+    # # Plot histogram per iteration
+    # ax = plt.figure().add_subplot(111, projection='3d')
+    #
+    # ax.set_title("Histograms of values of cost functions per iteration")
+    #
+    # # extract list of list of cost function values
+    # for iter_num, costs in opt.get_costs_per_iteration()[3:]:
+    #
+    #     print(max(costs))
+    #     # form a histogram for the given iteration
+    #     hist, bin_edges = np.histogram(costs, normed=True)
+    #     # set bin positions
+    #     bin_position = 0.5 *(bin_edges[1:] + bin_edges[:-1])
+    #     # plot
+    #     ax.bar(bin_position, hist, zs=iter_num, zdir='y', alpha=0.9)
+    #
+    # ax.set_xlabel("Value of cost function")
+    # ax.set_zlabel("probability distribuation")
+    # ax.set_ylabel("Iteration")
+    #
+    # plt.show()
 
-    # extract list of list of cost function values
-    for iter_num, costs in opt.get_costs_in_iteration()[3:]:
+    ###############################################################################################
 
-        print(max(costs))
-        # form a histogram for the given iteration
-        hist, bin_edges = np.histogram(costs, normed=True)
-        # set bin positions
-        bin_position = 0.5 *(bin_edges[1:] + bin_edges[:-1])
-        # plot
-        ax.bar(bin_position, hist, zs=iter_num, zdir='y', alpha=0.9)
+    # nbestpath = 5
+    #
+    # plt.title("Cost functions along best %d optimization trajectories" % nbestpath)
+    #
+    # for num, path in enumerate(opt.get_best_paths_cost_func(nbestpath)):
+    #     plt.plot(path, label=str(num))
+    #
+    # plt.legend()
+    # plt.xlabel("Iteration")
+    # plt.ylabel("Cost function")
+    #
+    # plt.show()
 
-    ax.set_xlabel("Value of cost function")
-    ax.set_zlabel("probability distribuation")
-    ax.set_ylabel("Iteration")
+    ###############################################################################################
 
-    plt.show()
+    # plt.title("Best path per iteration")
+    #
+    # for path in opt.get_best_path_per_iteration():
+    #     plt.plot(path)
+    #
+    # plt.xlabel("Iteration")
+    # plt.ylabel("Cost function")
+    #
+    # plt.show()
 
+    ###############################################################################################
 
     # # Display the connectedness analysis
     # connect_info = opt.get_landscape_connectedness()
