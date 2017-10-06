@@ -247,98 +247,19 @@ class QStochDynProg:
 #
 ###################################################################################################
 
+
 if __name__=='__main__':
 
-    from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
-
-    np.random.seed(94844)
-
-    from itertools import product
-    from scipy.linalg import expm
-
-    ###############################################################################################
-    #
-    #    Crate graph for switching the values of the field
-    #
-    ###############################################################################################
-
-    field_switching = nx.Graph()
-
-    # field = np.linspace(0, 9, 4)
-    # for k in range(1, field.size):
-    #     field_switching.add_edges_from(
-    #         product([field[k]], field[k-1:k+2])
-    #     )
-    # # add separatelly the lower point
-    # field_switching.add_edges_from(
-    #     [(field[0], field[0]), (field[0], field[1])]
-    # )
-
-    field = np.linspace(0, 9, 3)
-
-    field_switching.add_edges_from(
-            product(field, field)
-    )
-
-    # nx.draw_circular(
-    #     field_switching,
-    #     labels=dict((n, str(n)) for n in field_switching.nodes())
-    # )
-    # plt.show()
-
-    ###############################################################################################
-    #
-    #   Create the dictionary of propagators
-    #
-    ###############################################################################################
-
-    # Number of levels in the quantum system
-    N = 50
-
-    class CPropagator:
-        """
-        Propagator with precalculated matrix exponents
-        """
-        def __init__(self, field_switching):
-            # Generate the unperturbed hamiltonian
-            H0 = np.random.rand(N, N) + 1j * np.random.rand(N, N)
-            H0 += H0.conj().T
-
-            # Generate the dipole matrix
-            V = np.random.rand(N, N) + 1j * np.random.rand(N, N)
-            V += V.conj().T
-
-            # precalculate the matrix exponents
-            self._propagators = {
-               f:expm(-1j * (H0 + f * V)) for f in field_switching
-            }
-
-        def __call__(self, f, state):
-            return self._propagators[f].dot(state)
-
-    ###############################################################################################
-    #
-    #   Create the objective (cost) function
-    #
-    ###############################################################################################
-
-    class CCostFunc:
-        """
-        Objective function
-        """
-        def __init__(self):
-            self.O = np.random.rand(N, N) + 1j * np.random.rand(N, N)
-            self.O += self.O.conj().T
-
-        def __call__(self, state):
-            return np.einsum('ij,i,j', self.O, state.conj(), state).real
 
     ###############################################################################################
     #
     #   Run the optimization
     #
     ###############################################################################################
+
+    # import declaration of random system
+    from get_randsys import *
 
     init_state = np.zeros(N)
     init_state[0] = 1.
@@ -351,8 +272,8 @@ if __name__=='__main__':
         CCostFunc()
     )
 
-    for _ in range(8):
-       opt.next_time_step()
+    for iter_num in range(10):
+        opt.next_time_step()
 
     ###############################################################################################
     #
@@ -379,27 +300,27 @@ if __name__=='__main__':
 
     ###############################################################################################
 
-    # # Plot histogram per iteration
-    # ax = plt.figure().add_subplot(111, projection='3d')
-    #
-    # ax.set_title("Histograms of values of cost functions per iteration")
-    #
-    # # extract list of list of cost function values
-    # for iter_num, costs in opt.get_costs_per_iteration()[3:]:
-    #
-    #     print(max(costs))
-    #     # form a histogram for the given iteration
-    #     hist, bin_edges = np.histogram(costs, normed=True)
-    #     # set bin positions
-    #     bin_position = 0.5 *(bin_edges[1:] + bin_edges[:-1])
-    #     # plot
-    #     ax.bar(bin_position, hist, zs=iter_num, zdir='y', alpha=0.9)
-    #
-    # ax.set_xlabel("Value of cost function")
-    # ax.set_zlabel("probability distribuation")
-    # ax.set_ylabel("Iteration")
-    #
-    # plt.show()
+    # Plot histogram per iteration
+    ax = plt.figure().add_subplot(111, projection='3d')
+
+    ax.set_title("Histograms of values of cost functions per iteration")
+
+    # extract list of list of cost function values
+    for iter_num, costs in opt.get_costs_per_iteration()[6:]:
+
+        print(max(costs))
+        # form a histogram for the given iteration
+        hist, bin_edges = np.histogram(costs, normed=True)
+        # set bin positions
+        bin_position = 0.5 *(bin_edges[1:] + bin_edges[:-1])
+        # plot
+        ax.bar(bin_position, hist, zs=iter_num, zdir='y', alpha=0.8)
+
+    ax.set_xlabel("Value of cost function")
+    ax.set_zlabel("probability distribuation")
+    ax.set_ylabel("Iteration")
+
+    plt.show()
 
     ###############################################################################################
 
