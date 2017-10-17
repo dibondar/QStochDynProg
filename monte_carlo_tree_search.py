@@ -15,7 +15,7 @@ class MCTreeSearch(object):
     # for visualization
     get_original_weight = itemgetter('original_weight')
 
-    def __init__(self, init_state, init_control, propagator, control_switching, cost_func, nsteps=10):
+    def __init__(self, **kwargs):
         """
         Constructor
         :param init_state: (object) The initial state of a system
@@ -30,16 +30,25 @@ class MCTreeSearch(object):
 
         :param cost_func: An objective function to be maximized.
 
-        :param nsteps: number of steps to take during the simulation stage (aka, the horizon length)
-        """
-        # Save parameters
-        self.propagator = propagator
-        self.control_switching = control_switching
-        self.cost_func = cost_func
-        self.nsteps = nsteps
+        :param nsteps: (optional) number of steps to take during the simulation stage (aka, the horizon length)
 
-        self.init_state = init_state
-        self.init_control = init_control
+        :param min_cost_func: (optional) minimal value of atainbale by the cost function
+
+        :param max_cost_func: (optional) maximal value of atainbale by the cost function
+        """
+
+        # check that all mandatory parameters were specified
+        params_not_specified = list(
+            {
+                "init_state", "init_control", "propagator", "control_switching", "cost_func"
+            }.difference(kwargs)
+        )
+
+        assert params_not_specified == [], "%s parameters were not specified" % str(params_not_specified)
+
+        # Save attributes
+        for name, value in kwargs.items():
+            setattr(self, name, value)
 
         # Number of time step in optimization iteration
         self.current_iteration = 0
@@ -50,9 +59,9 @@ class MCTreeSearch(object):
         # add the root node
         self.decision_graph.add_node(
             0,
-            weight=self.cost_func(init_state),
-            original_weight=self.cost_func(init_state),
-            control=init_control,
+            weight=self.cost_func(self.init_state),
+            original_weight=self.cost_func(self.init_state),
+            control=self.init_control,
             iteration=0,
         )
 
@@ -255,19 +264,9 @@ if __name__=='__main__':
     ###############################################################################################
 
     # import declaration of random system
-    from get_randsys import *
+    from get_randsys import get_rand_unitary_sys
 
-    init_state = np.zeros(N)
-    init_state[0] = 1.
-
-    mcts = MCTreeSearch(
-        init_state,
-        field[field.size / 2],
-        CPropagator(field_switching),
-        field_switching,
-        CCostFunc(),
-        nsteps=100,
-    )
+    mcts = MCTreeSearch(nsteps=100, **get_rand_unitary_sys(5))
 
     for _ in range(1):
 
@@ -287,5 +286,16 @@ if __name__=='__main__':
             with_labels=False,
             linewidths=0,
         )
+
+        # Display bounds on the cost func values
+        ax = plt.gca()
+        xlim = ax.get_xlim()
+
+        ax.plot(xlim, [mcts.min_cost_func, mcts.min_cost_func], 'b')
+        ax.annotate("lower bound on cost function", xy=(xlim[0], mcts.min_cost_func), color='b')
+
+        ax.plot(xlim, [mcts.max_cost_func, mcts.max_cost_func], 'r')
+        ax.annotate("upper bound on cost function", xy=(xlim[0], mcts.max_cost_func), color='r')
+
         plt.axis('on')
         plt.show()

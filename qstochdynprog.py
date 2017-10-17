@@ -16,7 +16,7 @@ class QStochDynProg:
     get_cost_function = itemgetter('cost_func')
     get_iteration = itemgetter('iteration')
 
-    def __init__(self, init_state, init_control, propagator, control_switching, cost_func):
+    def __init__(self, **kwargs):
         """
         Constructor
         :param init_state: (object) The initial state of a system
@@ -30,19 +30,31 @@ class QStochDynProg:
         :param control_switching: A graph specifying the rules of switching of controls.
 
         :param cost_func: An objective function to be maximized.
+
+        :param min_cost_func: (optional) minimal value of atainbale by the cost function
+
+        :param max_cost_func: (optional) maximal value of atainbale by the cost function
         """
 
-        # Save parameters
-        self.propagator = propagator
-        self.control_switching = control_switching
-        self.cost_func = cost_func
+        # check that all mandatory parameters were specified
+        params_not_specified = list(
+            {
+                "init_state", "init_control", "propagator", "control_switching", "cost_func"
+            }.difference(kwargs)
+        )
+
+        assert params_not_specified == [], "%s parameters were not specified" % str(params_not_specified)
+
+        # Save attributes
+        for name, value in kwargs.items():
+            setattr(self, name, value)
 
         # Initialize heaps for performing the optimization
         S = self.CState(
-            cost_func=self.cost_func(init_state),
+            cost_func=self.cost_func(self.init_state),
             node=0,
-            control=init_control,
-            state=init_state
+            control=self.init_control,
+            state=self.init_state
         )
         self.previous_heap = [S]
 
@@ -259,18 +271,10 @@ if __name__=='__main__':
     ###############################################################################################
 
     # import declaration of random system
-    from get_randsys import *
+    from get_randsys import get_rand_unitary_sys
 
-    init_state = np.zeros(N)
-    init_state[0] = 1.
-
-    opt = QStochDynProg(
-        init_state,
-        field[field.size / 2],
-        CPropagator(field_switching),
-        field_switching,
-        CCostFunc()
-    )
+    # initialize
+    opt = QStochDynProg(**get_rand_unitary_sys(5))
 
     for iter_num in range(10):
         opt.next_time_step()
@@ -299,6 +303,8 @@ if __name__=='__main__':
     # plt.show()
 
     ###############################################################################################
+
+    from mpl_toolkits.mplot3d import Axes3D
 
     # Plot histogram per iteration
     ax = plt.figure().add_subplot(111, projection='3d')
