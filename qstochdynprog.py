@@ -97,39 +97,30 @@ class QStochDynProg:
 
         self.previous_heap = current_heap
 
-    def get_pos_iteration_cost(self):
+    def make_rounds(self, nrounds=1):
         """
-        Landscape plotting utility.
-        :return:
+        Advance optimization by nrounds
+        :param nsteps: a positive integer
+        :return: self
         """
-        return {
-            node:(self.get_iteration(prop), self.get_cost_function(prop))
-            for node, prop in self.landscape.node.items()
-        }
+        # loop over rounds
+        for _ in range(nrounds):
+            self.next_time_step()
 
-    def get_pos_cost_iteration(self):
-        """
-        Landscape plotting utility.
-        :return:
-        """
-        return {
-            node:(self.get_cost_function(prop), self.get_iteration(prop))
-            for node, prop in self.landscape.node.items()
-        }
+        return self
 
-    def get_node_color(self):
-        """
-        Landscape plotting utility.
-        :return:
-        """
-        return [self.get_cost_function(n) for n in self.landscape.node.values()]
+    ###################################################################################################
+    #
+    #   Analysis
+    #
+    ###################################################################################################
 
-    def get_edge_color(self):
+    def max_cost(self):
         """
-        Landscape plotting utility.
-        :return:
+        Return the found maximal value of the cost fuction
+        :return: max val
         """
-        return [d['control'] for _,_,d in self.landscape.edges(data=True) if 'control' in d]
+        return max(self.get_cost_function(_) for _ in self.landscape.node.values())
 
     def get_best_nodes_per_iteration(self, nnodes=1):
         """
@@ -252,6 +243,46 @@ class QStochDynProg:
             )
             for nbunch in levels
         ]
+
+    ###################################################################################################
+    #
+    #   Plotting facilities
+    #
+    ###################################################################################################
+
+    def get_pos_iteration_cost(self):
+        """
+        Landscape plotting utility.
+        :return:
+        """
+        return {
+            node:(self.get_iteration(prop), self.get_cost_function(prop))
+            for node, prop in self.landscape.node.items()
+        }
+
+    def get_pos_cost_iteration(self):
+        """
+        Landscape plotting utility.
+        :return:
+        """
+        return {
+            node:(self.get_cost_function(prop), self.get_iteration(prop))
+            for node, prop in self.landscape.node.items()
+        }
+
+    def get_node_color(self):
+        """
+        Landscape plotting utility.
+        :return:
+        """
+        return [self.get_cost_function(n) for n in self.landscape.node.values()]
+
+    def get_edge_color(self):
+        """
+        Landscape plotting utility.
+        :return:
+        """
+        return [d['control'] for _,_,d in self.landscape.edges(data=True) if 'control' in d]
 
 ###################################################################################################
 #

@@ -27,13 +27,10 @@ class MTCDynProg(MCTreeSearch):
         )
 
         # perform dynamical programing for nsteps
-        for _ in range(self.nsteps):
-            dynprog.next_time_step()
+        dynprog.make_rounds(self.nsteps)
 
         # find the best value of the cost function
-        max_cost = max(dynprog.get_cost_function(n) for n in dynprog.landscape.node.values())
-
-        return max_cost
+        return dynprog.max_cost()
 
 ###################################################################################################
 #

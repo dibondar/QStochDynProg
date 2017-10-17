@@ -67,9 +67,9 @@ class MCTreeSearch(object):
 
     def make_rounds(self, nrounds=1):
         """
-        Generator performing nrounds of Monte Carlo rounds
+        Performing nrounds of Monte Carlo rounds
         :param nsteps: a positive integer
-        :return: generator yielding latest added node
+        :return: self
         """
         # loop over rounds
         for _ in range(nrounds):
@@ -144,6 +144,8 @@ class MCTreeSearch(object):
                     # the root node was reached
                     pass
 
+        return self
+
     def selection(self):
         """
         Perform the selection step of the Monte Carlo tree search
@@ -215,6 +217,19 @@ class MCTreeSearch(object):
             max_cost = max(max_cost, self.cost_func(state))
 
         return max_cost
+
+    ###################################################################################################
+    #
+    #   Analysis
+    #
+    ###################################################################################################
+
+    def max_cost(self):
+        """
+        Return the found maximal value of the cost fuction
+        :return: max val
+        """
+        return max(self.get_weight(_) for _ in self.decision_graph.node.values())
 
     ###################################################################################################
     #
