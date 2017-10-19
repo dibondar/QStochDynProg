@@ -32,9 +32,9 @@ class MCTreeSearch(object):
 
         :param nsteps: (optional) number of steps to take during the simulation stage (aka, the horizon length)
 
-        :param min_cost_func: (optional) minimal value of atainbale by the cost function
+        :param min_cost_func: (optional) minimal value of attainable by the cost function
 
-        :param max_cost_func: (optional) maximal value of atainbale by the cost function
+        :param max_cost_func: (optional) maximal value of attainable by the cost function
         """
 
         # check that all mandatory parameters were specified
@@ -49,9 +49,6 @@ class MCTreeSearch(object):
         # Save attributes
         for name, value in kwargs.items():
             setattr(self, name, value)
-
-        # Number of time step in optimization iteration
-        self.current_iteration = 0
 
         # Initialize the decision graph
         self.decision_graph = nx.DiGraph()
