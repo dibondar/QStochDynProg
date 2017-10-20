@@ -62,7 +62,7 @@ def compare_methods(N):
     propagator.calls = 0
 
     ###################### Monte-Carlo tree search ######################
-    results["mcts_max"] = MCTreeSearch(nsteps=2 ** 10, **sys).make_rounds(2 ** 9).max_cost() / max_cost_func
+    results["mcts_max"] = MCTreeSearch(nsteps=2 ** 10, **sys).make_rounds(2 ** 13).max_cost() / max_cost_func
 
     # save number of calls made during optimization
     results["mcts_calls"] = propagator.calls
@@ -71,7 +71,7 @@ def compare_methods(N):
     propagator.calls = 0
 
     ###################### Genetic algorithm ######################
-    results["ga_max"] = GA(nsteps=2 ** 10, pop_size=2 ** 5, **sys).make_rounds(2 ** 6).max_cost() / max_cost_func
+    results["ga_max"] = GA(nsteps=2 ** 11, pop_size=2 ** 7, **sys).make_rounds(2 ** 9).max_cost() / max_cost_func
 
     # save number of calls made during optimization
     results["ga_calls"] = propagator.calls
