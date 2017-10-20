@@ -25,8 +25,13 @@ def counted(f):
     wrapped.calls = 0
     return wrapped
 
-def compare_methods(N):
 
+def compare_methods(N):
+    """
+    Compare different optimization methods
+    :param N: dimensionality of quantum system
+    :return: a dictionary of results
+    """
     # generate a random system
     sys = get_rand_unitary_sys(N)
 
@@ -77,32 +82,74 @@ def compare_methods(N):
     return results
 
 
-if __name__=='__main__':
-
-    p = Pool(8)
-    results = p.map(compare_methods, range(50, 3, -4))
-
-    # plot results
+def plot_simulations():
+    """
+    Plot results of simulations on a single plot
+    """
     import matplotlib.pyplot as plt
+    import glob
+    import pickle
 
-    N = map(itemgetter("N"), results)
+    def data2plot():
+        """
+        Generator yielding list to plot
+        :return:
+        """
+        for fname in glob.glob("*.simul"):
+            with open(fname, "rb") as f:
+                yield pickle.load(f)
 
-    mcts_max = np.array(map(itemgetter("mcts_max"), results))
-    mcts_calls = np.array(map(itemgetter("mcts_calls"), results))
+    for R in data2plot():
 
-    ga_max = np.array(map(itemgetter("ga_max"), results))
-    ga_calls = np.array(map(itemgetter("ga_calls"), results))
+        N = map(itemgetter("N"), R)
 
-    plt.subplot(121)
-    plt.title("Normalized max values at the end of optimization")
-    plt.plot(N, mcts_max, '*-', label="Monte-Carlo tree search")
-    plt.plot(N, ga_max, '*-', label="Genetic algorithm")
-    plt.legend()
+        mcts_max = np.array(map(itemgetter("mcts_max"), R))
+        mcts_calls = np.array(map(itemgetter("mcts_calls"), R))
 
-    plt.subplot(122)
-    plt.title("Algorithmic efficiency: Max-value per propagation")
-    plt.plot(N, mcts_max / mcts_calls, '*-', label="Monte-Carlo tree search")
-    plt.plot(N, ga_max / ga_calls, '*-', label="Genetic algorithm")
-    plt.legend()
+        ga_max = np.array(map(itemgetter("ga_max"), R))
+        ga_calls = np.array(map(itemgetter("ga_calls"), R))
+
+        # print np.mean(ga_calls / mcts_calls)
+
+        plt.subplot(121)
+        plt.title("Normalized max values at the end of optimization")
+        plt.plot(N, mcts_max, 'r*-', alpha=0.4, label="Monte-Carlo tree search")
+        plt.plot(N, ga_max, 'b*-', alpha=0.4, label="Genetic algorithm")
+        #plt.legend()
+
+        plt.subplot(122)
+        plt.title("Algorithmic efficiency: Max-value per propagation")
+        plt.plot(N, mcts_max / mcts_calls, 'r*-', alpha=0.4, label="Monte-Carlo tree search")
+        plt.plot(N, ga_max / ga_calls, 'b*-', alpha=0.4, label="Genetic algorithm")
+        #plt.legend()
 
     plt.show()
+
+if __name__=='__main__':
+
+    import pickle
+    import tempfile
+
+    #############################################################################
+    #
+    #   Calculate results and save
+    #
+    #############################################################################
+
+    p = Pool(10)
+    result = p.map(compare_methods, range(50, 3, -4))
+
+    # save the results of simulations
+    with tempfile.NamedTemporaryFile(suffix='.simul', delete=False, dir='') as f:
+        pickle.dump(result, f)
+
+    print("Results of simulation are saved in ", f.name)
+
+    #############################################################################
+    #
+    #   Plot results
+    #
+    #############################################################################
+
+    # display all the files
+    # plot_simulations(data2plot())
