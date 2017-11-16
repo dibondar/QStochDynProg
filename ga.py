@@ -91,7 +91,7 @@ class GA(object):
         # make a local copy of the intial state
         state = self.init_state.copy()
 
-        max_cost = -np.inf
+        max_cost =  self.cost_func(state)
 
         for control in individual:
             # update state

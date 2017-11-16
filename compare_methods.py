@@ -44,7 +44,7 @@ def compare_methods(N):
     results = dict(max_cost_func=max_cost_func, N=N)
 
     # ###################### Dynamical programming ######################
-    results["dp_max"] = QStochDynProg(**sys).make_rounds(20).max_cost() / max_cost_func
+    results["dp_max"] = QStochDynProg(**sys).make_rounds(21).max_cost() / max_cost_func
 
     # save number of calls made during optimization
     results["dp_calls"] = propagator.calls
@@ -53,7 +53,7 @@ def compare_methods(N):
     propagator.calls = 0
 
     ################ Hybrid monte-carlo tree seach and dynamical programming #############
-    results["mcdp_max"] = MTCDynProg(nsteps=10, **sys).make_rounds(2 ** 10).max_cost() / max_cost_func
+    results["mcdp_max"] = MTCDynProg(nsteps=10, **sys).make_rounds(2 ** 13).max_cost() / max_cost_func
 
     # save number of calls made during optimization
     results["mcdp_calls"] = propagator.calls
@@ -146,7 +146,7 @@ if __name__=='__main__':
     #
     #############################################################################
 
-    p = Pool(7)
+    p = Pool(4)
     result = p.map(compare_methods, range(50, 3, -4))
 
     # save the results of simulations

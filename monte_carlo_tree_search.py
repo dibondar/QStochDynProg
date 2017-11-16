@@ -8,11 +8,13 @@ class MCTreeSearch(object):
     """
     The Monte Carlo tree search methodology to maximize the cost function
     """
+    # nodes are weighted by the cost function
     get_weight = itemgetter('weight')
+
     get_control = itemgetter('control')
     get_iteration = itemgetter('iteration')
 
-    # for visualization
+    # for visualization (the original value of the cost function)
     get_original_weight = itemgetter('original_weight')
 
     def __init__(self, **kwargs):
@@ -80,10 +82,8 @@ class MCTreeSearch(object):
             #
             ##########################################################################
 
-            # extact current iteration value
+            # extract current iteration value (for visualization purpose)
             current_iteration = 1 + self.get_iteration(self.decision_graph.node[leaf_node])
-
-            new_nodes = []
 
             # Loop over all controls attainable from the leaf_node node
             for C in self.control_switching[control]:
@@ -108,38 +108,13 @@ class MCTreeSearch(object):
                 )
                 self.decision_graph.add_edge(new_node, leaf_node)
 
-                new_nodes.append(new_node)
+                ##########################################################################
+                #
+                #  Backpropagation stage
+                #
+                ##########################################################################
 
-            ##########################################################################
-            #
-            #  Backpropagation stage
-            #
-            ##########################################################################
-
-            # backpropagate starting from each new node added in the expansion stage
-            for new_node in new_nodes:
-
-                new_weight = self.get_weight(self.decision_graph.node[new_node])
-                n = new_node
-
-                try:
-                    # loop until len(self.decision_graph[n]) == 0
-                    while True:
-                        # go one level up
-                        n, = self.decision_graph[n]
-
-                        # extract property of the node
-                        prop = self.decision_graph.node[n]
-
-                        # decide whether to keep backpropagating
-                        if self.get_weight(prop) >= new_weight:
-                            break
-                        else:
-                            # update the value of the weight
-                            prop.update(weight=new_weight)
-                except ValueError:
-                    # the root node was reached
-                    pass
+                self.backpropagation(new_node)
 
         return self
 
@@ -150,7 +125,7 @@ class MCTreeSearch(object):
                 2) the control that brought to that node, and 3) the current state
         """
         # in order to be able to move from the root to a leaf node,
-        # the direction of the decsion graph needs to be reversed
+        # the direction of the decision graph needs to be reversed
         self.decision_graph.reverse(copy=False)
 
         # initialize the system state
@@ -174,14 +149,31 @@ class MCTreeSearch(object):
                 )
                 p /= p.sum()
 
-                # make a random choice
+                # make a random choice of the next node
                 current_node = np.random.choice(candidate_nodes.keys(), p=p)
 
+                # extract node's properties
+                current_node_prop = self.decision_graph.node[current_node]
+
                 # extract the control that brings to the selected node
-                control = self.get_control(self.decision_graph.node[current_node])
+                control = self.get_control(current_node_prop)
 
                 # propagate to the current node
                 state = self.propagator(control, state)
+
+                # in an unlikely event when the cost function value of the current state
+                # is larger than the recoded weight, update the weight and backpropagate its value
+                current_weight = self.cost_func(state)
+
+                if current_weight > self.get_weight(current_node_prop):
+                    # update the weight
+                    current_node_prop.update(weight=current_weight)
+
+                    # and backpropagate its value
+                    self.decision_graph.reverse(copy=False)
+                    self.backpropagation(current_node)
+                    self.decision_graph.reverse(copy=False)
+
 
         except ValueError:
             # a leaf node is reached
@@ -202,7 +194,7 @@ class MCTreeSearch(object):
         # make a local copy of the state
         state = state.copy()
 
-        max_cost = -np.inf
+        max_cost = self.cost_func(state)
 
         for _ in range(self.nsteps):
             # update state
@@ -214,6 +206,34 @@ class MCTreeSearch(object):
             max_cost = max(max_cost, self.cost_func(state))
 
         return max_cost
+
+    def backpropagation(self, new_node):
+        """
+        Perform the backpropagation stage of Monti Carlo Tree search
+        :param new_node: the node whose weight get propagated up the decision tree
+        :return: None
+        """
+        new_weight = self.get_weight(self.decision_graph.node[new_node])
+        n = new_node
+
+        try:
+            # loop until len(self.decision_graph[n]) == 0
+            while True:
+                # go one level up
+                n, = self.decision_graph[n]
+
+                # extract property of the node
+                prop = self.decision_graph.node[n]
+
+                # decide whether to keep backpropagating
+                if self.get_weight(prop) >= new_weight:
+                    break
+                else:
+                    # update the value of the weight
+                    prop.update(weight=new_weight)
+        except ValueError:
+            # the root node was reached
+            pass
 
     ###################################################################################################
     #
@@ -274,7 +294,6 @@ if __name__=='__main__':
     #   Run the optimization
     #
     ###############################################################################################
-
     # import declaration of random system
     from get_randsys import get_rand_unitary_sys
 
