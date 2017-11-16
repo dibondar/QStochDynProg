@@ -261,12 +261,26 @@ class MCTreeSearch(object):
         """
         return [self.get_original_weight(n) for n in self.decision_graph.node.values()]
 
+    def get_node_color_weight(self):
+        """
+        Decision graph plotting utility.
+        :return:
+        """
+        return [self.get_weight(n) for n in self.decision_graph.node.values()]
+
     def get_edge_color(self):
         """
         Decision graph plotting utility.
         :return:
         """
         return [self.get_control(self.decision_graph.node[n]) for n,_ in self.decision_graph.edges()]
+
+    def get_edge_color_weight(self):
+        """
+        Decision graph plotting utility.
+        :return:
+        """
+        return [self.get_weight(self.decision_graph.node[n]) for n,_ in self.decision_graph.edges()]
 
     def get_pos_iteration_cost(self):
         """
