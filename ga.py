@@ -1,5 +1,6 @@
 import array
 import random
+from types import MethodType, FunctionType
 
 import numpy as np
 
@@ -16,17 +17,17 @@ class GA(object):
     This implementation is not universal.
     It works only for binary choice of controls with no switching rules.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, init_state, propagator, cost_func, nsteps, pop_size, **kwargs):
         """
         Constructor
         :param init_state: (object) The initial state of a system
 
-        :param propagator: A callable object must accept two arguments: The value of control C
+        :param propagator: A callable object must accept three arguments: Self, the value of control C,
             and the state of a system S. Returns the new state of by acting onto state S by control C.
 
         :param control_switching: (optional) A graph specifying the rules of switching of controls.
 
-        :param cost_func: An objective function to be maximized.
+        :param cost_func: An objective function to be maximized. It must accept three two arguments: self and state
 
         :param nsteps: number of steps to take during the simulation stage (aka, the length of genome)
 
@@ -36,19 +37,21 @@ class GA(object):
 
         :param max_cost_func: (optional) maximal value of attainable by the cost function
         """
+        self.init_state = init_state
+        self.nsteps = nsteps
+        self.pop_size = pop_size
 
-        # check that all mandatory parameters were specified
-        params_not_specified = list(
-            {
-                "init_state", "propagator", "cost_func", "nsteps", "pop_size"
-            }.difference(kwargs)
-        )
+        self.propagator = MethodType(propagator, self)
+        self.cost_func = MethodType(cost_func, self)
 
-        assert params_not_specified == [], "%s parameters were not specified" % str(params_not_specified)
-
-        # Save attributes
+        # save all the other attributes
         for name, value in kwargs.items():
-            setattr(self, name, value)
+            # if the value supplied is a function, then dynamically assign it as a method;
+            if isinstance(value, FunctionType):
+                setattr(self, name, MethodType(value, self))
+            # otherwise bind it as a property
+            else:
+                setattr(self, name, value)
 
         ########################################################################################
         #

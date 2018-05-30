@@ -49,14 +49,14 @@ def get_rand_unitary_sys(N):
         control: expm(1j * get_rand_herm()) for control in control_switching
     }
 
-    def propagator(control, state):
+    def propagator(self, control, state):
         """
         Propagate the state
         :param control:
         :param state: initial wave function
         :return: updated wave function
         """
-        return _propagators[control].dot(state)
+        return self._propagators[control].dot(state)
 
     ###############################################################################################
     #
@@ -71,8 +71,8 @@ def get_rand_unitary_sys(N):
     min_cost_func = spectra_observable.min()
     max_cost_func = spectra_observable.max()
 
-    def cost_func(state):
-        return np.einsum('ij,i,j', observable, state.conj(), state).real
+    def cost_func(self, state):
+        return np.einsum('ij,i,j', self.observable, state.conj(), state).real
 
     ###############################################################################################
     #
@@ -84,11 +84,17 @@ def get_rand_unitary_sys(N):
     init_state[0] = 1.
 
     return {
-        "init_state" : init_state,
-        "init_control" : init_control,
-        "propagator" : propagator,
-        "control_switching" : control_switching,
-        "cost_func" : cost_func,
+        "init_state": init_state,
+        "init_control": init_control,
+
+        "_propagators": _propagators,
+        "propagator": propagator,
+
+        "control_switching": control_switching,
+
+        "observable": observable,
+        "cost_func": cost_func,
+
         "min_cost_func" : min_cost_func,
         "max_cost_func" : max_cost_func,
     }

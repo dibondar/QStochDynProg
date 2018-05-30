@@ -2,6 +2,7 @@ from random import choice
 import numpy as np
 import networkx as nx
 from operator import itemgetter
+from types import MethodType, FunctionType
 
 
 class MCTreeSearch(object):
@@ -17,7 +18,7 @@ class MCTreeSearch(object):
     # for visualization (the original value of the cost function)
     get_original_weight = itemgetter('original_weight')
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, init_state, init_control, propagator, control_switching, cost_func, **kwargs):
         """
         Constructor
         :param init_state: (object) The initial state of a system
@@ -25,12 +26,12 @@ class MCTreeSearch(object):
         :param init_control: (object) The initial vale of a control.
             It is needed to determine which controls can be used at the next time step.
 
-        :param propagator: A callable object must accept two arguments: The value of control C
+        :param propagator: A callable object must accept three arguments: Self, the value of control C,
             and the state of a system S. Returns the new state of by acting onto state S by control C.
 
         :param control_switching: A graph specifying the rules of switching of controls.
 
-        :param cost_func: An objective function to be maximized.
+        :param cost_func: An objective function to be maximized. It must accept three two arguments: self and state
 
         :param nsteps: (optional) number of steps to take during the simulation stage (aka, the horizon length)
 
@@ -38,19 +39,21 @@ class MCTreeSearch(object):
 
         :param max_cost_func: (optional) maximal value of attainable by the cost function
         """
+        self.init_state = init_state
+        self.init_control = init_control
+        self.control_switching = control_switching
 
-        # check that all mandatory parameters were specified
-        params_not_specified = list(
-            {
-                "init_state", "init_control", "propagator", "control_switching", "cost_func"
-            }.difference(kwargs)
-        )
+        self.propagator = MethodType(propagator, self)
+        self.cost_func = MethodType(cost_func, self)
 
-        assert params_not_specified == [], "%s parameters were not specified" % str(params_not_specified)
-
-        # Save attributes
+        # save all the other attributes
         for name, value in kwargs.items():
-            setattr(self, name, value)
+            # if the value supplied is a function, then dynamically assign it as a method;
+            if isinstance(value, FunctionType):
+                setattr(self, name, MethodType(value, self))
+            # otherwise bind it as a property
+            else:
+                setattr(self, name, value)
 
         # Initialize the decision graph
         self.decision_graph = nx.DiGraph()
@@ -122,7 +125,8 @@ class MCTreeSearch(object):
         """
         Perform the selection step of the Monte Carlo tree search
         :return: a tuple of 1) a leaf node from which the expansion stage takes over,
-                2) the control that brought to that node, and 3) the current state
+                2) the control that brought to that node,
+                and 3) the current state
         """
         # in order to be able to move from the root to a leaf node,
         # the direction of the decision graph needs to be reversed
@@ -201,7 +205,7 @@ class MCTreeSearch(object):
             state = self.propagator(control, state)
 
             # randomly choose where to go next
-            control = choice(self.control_switching[control].keys())
+            control = choice(tuple(self.control_switching[control].keys()))
 
             max_cost = max(max_cost, self.cost_func(state))
 
@@ -288,7 +292,7 @@ class MCTreeSearch(object):
         :return:
         """
         return {
-            node:(self.get_iteration(prop), self.get_original_weight(prop))
+            node: (self.get_iteration(prop), self.get_original_weight(prop))
             for node, prop in self.decision_graph.node.items()
         }
 

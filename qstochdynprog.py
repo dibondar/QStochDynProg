@@ -3,6 +3,7 @@ import heapq
 import networkx as nx
 from collections import namedtuple, defaultdict
 from operator import itemgetter
+from types import MethodType, FunctionType
 
 
 class QStochDynProg:
@@ -16,7 +17,7 @@ class QStochDynProg:
     get_cost_function = itemgetter('cost_func')
     get_iteration = itemgetter('iteration')
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, init_state, init_control, propagator, control_switching, cost_func, **kwargs):
         """
         Constructor
         :param init_state: (object) The initial state of a system
@@ -24,30 +25,34 @@ class QStochDynProg:
         :param init_control: (object) The initial vale of a control.
             It is needed to determine which controls can be used at the next time step.
 
-        :param propagator: A callable object must accept two arguments: The value of control C
+        :param propagator: A callable object must accept three arguments: Self, the value of control C,
             and the state of a system S. Returns the new state of by acting onto state S by control C.
 
         :param control_switching: A graph specifying the rules of switching of controls.
 
-        :param cost_func: An objective function to be maximized.
+        :param cost_func: An objective function to be maximized. It must accept three two arguments: self and state
 
-        :param min_cost_func: (optional) minimal value of atainbale by the cost function
+        :param nsteps: (optional) number of steps to take during the simulation stage (aka, the horizon length)
 
-        :param max_cost_func: (optional) maximal value of atainbale by the cost function
+        :param min_cost_func: (optional) minimal value of attainable by the cost function
+
+        :param max_cost_func: (optional) maximal value of attainable by the cost function
         """
+        self.init_state = init_state
+        self.init_control = init_control
+        self.control_switching = control_switching
 
-        # check that all mandatory parameters were specified
-        params_not_specified = list(
-            {
-                "init_state", "init_control", "propagator", "control_switching", "cost_func"
-            }.difference(kwargs)
-        )
+        self.propagator = MethodType(propagator, self)
+        self.cost_func = MethodType(cost_func, self)
 
-        assert params_not_specified == [], "%s parameters were not specified" % str(params_not_specified)
-
-        # Save attributes
+        # save all the other attributes
         for name, value in kwargs.items():
-            setattr(self, name, value)
+            # if the value supplied is a function, then dynamically assign it as a method;
+            if isinstance(value, FunctionType):
+                setattr(self, name, MethodType(value, self))
+            # otherwise bind it as a property
+            else:
+                setattr(self, name, value)
 
         # Initialize heaps for performing the optimization
         S = self.CState(
